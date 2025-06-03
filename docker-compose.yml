@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   uhf-server:
-    image: ghcr.io/RyDizz214/uhf-server-docker:1.4.0
+    image: ghcr.io/rydizz214/uhf-server-docker:1.4.0
     container_name: uhf-server
     restart: unless-stopped
     env_file:
