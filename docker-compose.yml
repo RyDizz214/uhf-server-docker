@@ -1,16 +1,19 @@
+version: "3.8"
+
 services:
   uhf-server:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/RyDizz214/uhf-server-docker:1.4.0
     container_name: uhf-server
     restart: unless-stopped
+    env_file:
+      - .env
     ports:
-      - "${PORT:-8000}:${PORT:-8000}"
+      - "${PORT}:8000"
     volumes:
-      - ${RECORDINGS_DIR:-./recordings}:/recordings
-    environment:
-      - PORT=${PORT:-8000}
-      - PASSWORD=${PASSWORD:-} # Optional password protection
-    command: uhf-server --port ${PORT:-8000} --recordings-dir /recordings ${PASSWORD:+--password ${PASSWORD}}
-    stop_grace_period: 30s
+      - "${HOST_RECORDINGS_DIR}:/recordings"
+      - "${HOST_UHF_DATA_DIR}:/var/lib/uhf-server"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/server/stats"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
