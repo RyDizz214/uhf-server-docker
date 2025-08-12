@@ -4,12 +4,13 @@ FROM ubuntu:25.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install required dependencies
-RUN apt-get update && apt-get install -y \
-    curl \
-    ffmpeg \
-    unzip \
-    ca-certificates \
-    && apt-get clean \
+RUN apt-get update -o Acquire::Check-Valid-Until=false \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates git curl bash unzip ffmpeg \
+        build-essential autoconf automake libtool \
+        libargtable2-dev pkg-config libsdl2-dev \
+        libavcodec-dev libavformat-dev libavfilter-dev libavutil-dev \
+        libavdevice-dev libjansson-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Create directory for recordings
@@ -29,10 +30,6 @@ RUN curl -sL https://link.uhfapp.com/setup.sh > setup.sh && \
 
 # Expose default port
 EXPOSE ${PORT}
-
-# Set healthcheck
-HEALTHCHECK --interval=60s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:${PORT}/server/stats || exit 1
 
 # Default command
 CMD ["bash"]
