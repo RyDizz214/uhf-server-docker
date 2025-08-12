@@ -1,5 +1,12 @@
 # UHF Server - Changelog
 
+## 1.5.0
+
+- Fixed the recording of HLS and DASH streams.
+- Improved the logging of ffmpeg errors.
+- Made a Docker image available in Docker Hub (`swapplications/uhf-server`) and improved the Dockerfile.
+- The GUI now offers a quick access to the logs file from the contextual menu of the status bar app.
+
 ## 1.4.0
 
 - UHF Server can now detect commercials. Set the `--enable-commercial-detection` argument when invoking the
