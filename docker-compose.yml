@@ -1,8 +1,6 @@
 services:
   uhf-server:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: swapplications/uhf-server:latest
     container_name: uhf-server
     restart: unless-stopped
     ports:
