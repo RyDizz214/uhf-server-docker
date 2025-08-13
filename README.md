@@ -52,3 +52,14 @@ docker-compose logs -f
 ```bash
 docker-compose down
 ```
+
+## Using the dockerhub image
+```bash
+docker run -d --init --name=uhf --restart unless-stopped \
+-v /mnt/mydisk/recordings:/recordings \
+-p 8000:8000 \
+swapplications/uhf-server:1.5.1 \
+uhf-server --port 8000 --recordings-dir /recordings
+```
+
+Replace `/mnt/mydisk/recordings` with a valid path to your recordings directory.
