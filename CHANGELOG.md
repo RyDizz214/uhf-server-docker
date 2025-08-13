@@ -1,5 +1,9 @@
 # UHF Server - Changelog
 
+## 1.5.1
+
+- More HLS compatibility fixes.
+
 ## 1.5.0
 
 - Fixed the recording of HLS and DASH streams.
