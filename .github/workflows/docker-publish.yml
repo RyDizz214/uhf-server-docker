@@ -1,0 +1,114 @@
+name: Build & publish multi-arch image to GHCR
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Extra image tag (optional). The normal semver/branch/latest tags are produced automatically.'
+        required: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    # arm64 compiles FFmpeg and x265 under QEMU emulation; an uncached build is slow.
+    timeout-minutes: 360
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU (arm64 cross-build)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # An image rebuild of the same UHF Server version (v2.2.0-1) is a semver
+      # pre-release to metadata-action, which then skips {{major}}.{{minor}}.
+      # Emit the base (2.2.0) and minor (2.2) tags for it here.
+      - name: Compute image-revision tags
+        id: revtags
+        run: |
+          ref="${GITHUB_REF_NAME:-}"
+          echo "tags<<EOF" >> "$GITHUB_OUTPUT"
+          if [[ "$ref" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)-[0-9]+$ ]]; then
+            echo "type=raw,value=${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}" >> "$GITHUB_OUTPUT"
+            echo "type=raw,value=${BASH_REMATCH[1]}.${BASH_REMATCH[2]}" >> "$GITHUB_OUTPUT"
+          fi
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Compute image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          # Tag strategy:
+          #   - push tag v2.2.0   -> :2.2.0, :2.2, :latest
+          #   - push tag v2.2.0-1 -> :2.2.0-1, :2.2.0, :2.2, :latest
+          #   - push to main      -> :main (NEVER touches :latest)
+          #   - manual dispatch   -> whatever `inputs.tag` is, plus the normal tags
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=ref,event=branch
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=raw,value=${{ github.event.inputs.tag }},enable=${{ github.event.inputs.tag != '' }}
+            ${{ steps.revtags.outputs.tags }}
+
+      - name: Build & push (linux/amd64, linux/arm64)
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # FFmpeg, x265 and Comskip's FFmpeg are pinned by build args in the
+          # Dockerfile, so their layers are reused from cache until a pin changes.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Run the just-pushed image natively on each architecture: start the server,
+  # check the API and password, and run ffmpeg (x264/x265) and Comskip.
+  smoke-test:
+    needs: build-and-push
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Smoke test (${{ matrix.arch }})
+        env:
+          DIGEST: ${{ needs.build-and-push.outputs.digest }}
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}@${DIGEST}"
+          docker pull --platform "linux/${{ matrix.arch }}" "$image"
+          scripts/smoke-test.sh "$image"

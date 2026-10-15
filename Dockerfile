@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git curl ca-certificates wget unzip xz-utils grep coreutils \
     build-essential pkg-config autoconf automake cmake libtool \
     yasm nasm meson ninja-build \
-    libfreetype6-dev libass-dev libfontconfig1-dev libunistring-dev libnuma-dev \
+    libfreetype-dev libass-dev libfontconfig1-dev libunistring-dev libnuma-dev \
     libfribidi-dev libharfbuzz-dev \
     libssl-dev \
     libx11-dev libxext-dev libxfixes-dev libxi-dev libxrender-dev libxrandr-dev \
@@ -155,16 +155,17 @@ FROM ubuntu:26.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG UHF_SERVER_VERSION=2.2.0
-ARG UHF_SERVER_ARCH=linux-x64
+# Set by buildx for each platform (amd64, arm64). UHF_SERVER_ARCH overrides it.
+ARG TARGETARCH
+ARG UHF_SERVER_ARCH=
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl unzip tzdata \
     libargtable2-0 \
-    libavformat62 libavcodec62 libavutil60 libswscale9 libswresample6 \
     libx11-6 libxext6 libxrender1 libxfixes3 libxi6 libxrandr2 \
     libnuma1 libstdc++6 libssl3t64 \
     libass9 libfreetype6 libfribidi0 libharfbuzz0b libfontconfig1 libpng16-16t64 \
-    libsdl2-2.0-0 libsdl1.2debian libvdpau1 libvpl2 \
+    libsdl2-2.0-0 libsdl1.2debian libvdpau1 \
     ocl-icd-libopencl1 \
     dbus-user-session systemd \
     && rm -rf /var/lib/apt/lists/*
@@ -196,6 +197,13 @@ RUN ldconfig
 
 # Download and install UHF Server
 RUN set -eux; \
+    if [ -z "${UHF_SERVER_ARCH}" ]; then \
+        case "${TARGETARCH:-amd64}" in \
+            amd64) UHF_SERVER_ARCH=linux-x64 ;; \
+            arm64) UHF_SERVER_ARCH=linux-arm64 ;; \
+            *) echo "Unsupported architecture: ${TARGETARCH}"; exit 1 ;; \
+        esac; \
+    fi; \
     APP_URL="https://github.com/swapplications/uhf-server-dist/releases/download/${UHF_SERVER_VERSION}/UHF.Server-${UHF_SERVER_ARCH}-${UHF_SERVER_VERSION}.zip"; \
     echo "Downloading UHF Server from: ${APP_URL}"; \
     curl -fsSL -o /tmp/uhf-server.zip "${APP_URL}"; \

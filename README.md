@@ -4,7 +4,8 @@ A ready-to-run Docker setup for [UHF Server](https://github.com/swapplications/u
 the DVR server for the UHF app. It records live streams on schedule, detects commercials with
 Comskip, and serves recordings to the UHF apps and to its own web app.
 
-The pre-built image is published to GitHub Container Registry for Intel/AMD (`amd64`) and ships:
+The pre-built image is published to GitHub Container Registry for Intel/AMD (`amd64`) and ARM
+(`arm64`) and ships:
 
 * **UHF Server 2.2.0**
 * **FFmpeg 9.0.2**, built from source with x264, x265, fdk-aac, libvpx and opus
@@ -195,6 +196,15 @@ mount it starts normally, without sleep prevention.
 ## Building the image
 
 Maintainers only; everyone else uses the published image.
+
+Releases are built by GitHub Actions ([docker-publish.yml](.github/workflows/docker-publish.yml))
+for `linux/amd64` and `linux/arm64`:
+
+* Pushing a tag `vX.Y.Z` publishes `:X.Y.Z`, `:X.Y` and `:latest`.
+* Pushing an image-only rebuild tag `vX.Y.Z-N` publishes `:X.Y.Z-N`, `:X.Y.Z`, `:X.Y` and `:latest`.
+* Pushing to `main` publishes `:main` only.
+
+For a local, single-architecture build:
 
 ```bash
 ./build.sh               # build locally
