@@ -19,7 +19,28 @@ optional overlay that uses the host's ffmpeg instead of the bundled one.
 
 ---
 
-## Install
+## Quick start
+
+Pull the image and run it. No clone needed:
+
+```bash
+docker pull ghcr.io/rydizz214/uhf-server-docker:2.2.0
+
+docker run -d --init --name uhf-server --restart unless-stopped \
+  -p 8000:8000 \
+  -e UHF_PASSWORD=change-me \
+  -v /path/to/recordings:/recordings \
+  -v /path/to/uhf-data:/var/lib/uhf-server \
+  ghcr.io/rydizz214/uhf-server-docker:2.2.0
+```
+
+Replace the two `/path/to/...` folders with real ones on your host and pick your own password.
+Any setting from the [table below](#common-settings) can be added with another `-e`, for example
+`-e UHF_SINGLE_FILE_RECORDINGS=true`. Then [connect](#4-connect).
+
+To manage settings in a `.env` file or add the VPN overlay, use Docker Compose instead:
+
+## Install with Docker Compose
 
 ### 1. Install Docker on your Linux host
 
@@ -37,9 +58,10 @@ cp example.env .env
 ### 3. Set a password and start it
 
 Edit `.env` and set `UHF_PASSWORD`. Without one, anyone who can reach the server can use it
-and open the web app without signing in. Then:
+and open the web app without signing in. Then pull the image and start it:
 
 ```bash
+docker compose pull
 docker compose up -d
 ```
 
