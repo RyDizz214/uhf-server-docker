@@ -137,7 +137,7 @@ RUN set -eux; \
 FROM ubuntu:25.04
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG UHF_SERVER_VERSION=1.5.1
+ARG UHF_SERVER_VERSION=1.6.0
 ARG UHF_SERVER_ARCH=linux-x64
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -193,7 +193,7 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 # Image metadata
 LABEL org.opencontainers.image.title="UHF Server" \
       org.opencontainers.image.description="UHF Server with FFmpeg and Comskip in Docker" \
-      org.opencontainers.image.version="1.5.1" \
+      org.opencontainers.image.version="1.6.0" \
       org.opencontainers.image.source="https://github.com/rydizz214/uhf-server-docker" \
       org.opencontainers.image.url="https://github.com/rydizz214/uhf-server-docker"
 

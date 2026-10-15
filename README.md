@@ -191,6 +191,10 @@ UHF_ENABLE_COMMERCIAL_DETECTION=true
 
 # Comskip arguments (--ini, --detectfiller, etc.)
 COMSKIP_ARGS=--ini
+
+# Merge each finished recording into a single index.ts (uhf-server 2.2.0+).
+# Needs twice the recording's size in free disk space while merging.
+UHF_SINGLE_FILE_RECORDINGS=false
 ```
 
 ---

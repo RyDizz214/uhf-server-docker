@@ -12,7 +12,7 @@ set -e
 
 # Configuration
 IMAGE_REGISTRY="ghcr.io/rydizz214/uhf-server-docker"
-IMAGE_TAG="1.5.1"
+IMAGE_TAG="1.6.0"
 FULL_IMAGE="${IMAGE_REGISTRY}:${IMAGE_TAG}"
 
 # Options
