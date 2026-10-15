@@ -3,3 +3,5 @@ Dockerfile.inhibit
 build_output.log
 systemd-inhibit/
 gluetun/
+docker-compose.local.yml
+backups_*

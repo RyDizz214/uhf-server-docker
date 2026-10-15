@@ -1,0 +1,68 @@
+########################################
+# UHF Server — VPN overlay (gluetun)
+#
+# Routes all uhf-server traffic through a gluetun VPN sidecar:
+#   docker compose -f docker-compose.yml -f docker-compose.vpn.yml up -d
+#
+# PROVIDER-AGNOSTIC: gluetun supports 40+ VPN providers (NordVPN, Mullvad,
+# ProtonVPN, PIA, Surfshark, AirVPN, Windscribe, ...). Configure yours in
+# .env with VPN_SERVICE_PROVIDER, VPN_TYPE and the provider's auth variables
+# (WIREGUARD_PRIVATE_KEY, WIREGUARD_ADDRESSES, OPENVPN_USER, OPENVPN_PASSWORD,
+# ...). Provider list and required variables:
+#   https://github.com/qdm12/gluetun-wiki/tree/main/setup/providers
+#
+# Every variable in .env is passed to gluetun, so any gluetun setting
+# (SERVER_COUNTRIES, SERVER_CITIES, SERVER_HOSTNAMES, ...) works without
+# editing this file.
+########################################
+
+services:
+  gluetun-uhf:
+    image: qmcgaw/gluetun:latest
+    container_name: uhf-gluetun
+    init: true
+    restart: unless-stopped
+    cap_add:
+    - NET_ADMIN
+    devices:
+    - /dev/net/tun:/dev/net/tun
+    # The port moves here because uhf-server shares gluetun's network namespace.
+    # Bound to localhost; put a reverse proxy in front for remote access.
+    ports:
+    - 127.0.0.1:${HOST_PORT:-8000}:${UHF_PORT:-8000}
+    env_file:
+    - .env
+    environment:
+      TZ: ${TZ:-America/New_York}
+      # .env's LOG_LEVEL is UHF Server's; gluetun gets its own.
+      LOG_LEVEL: ${GLUETUN_LOG_LEVEL:-info}
+      # Allow inbound connections to UHF Server through gluetun's firewall.
+      FIREWALL_INPUT_PORTS: ${UHF_PORT:-8000}
+      # gluetun's control server defaults to :8000, the same port as UHF Server.
+      HTTP_CONTROL_SERVER_ADDRESS: ${HTTP_CONTROL_SERVER_ADDRESS:-:8001}
+      # LAN ranges plus 224.0.0.251/32 (mDNS), so UHF Server's discovery
+      # announce isn't dropped by the firewall's default OUTPUT DROP rule.
+      FIREWALL_OUTBOUND_SUBNETS: ${FIREWALL_OUTBOUND_SUBNETS:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,224.0.0.251/32}
+    volumes:
+    - ./gluetun:/gluetun
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - ping -c 1 1.1.1.1 || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  uhf-server:
+    network_mode: service:gluetun-uhf
+    depends_on:
+      gluetun-uhf:
+        condition: service_healthy
+    # network_mode: service:X forbids ports on the joining container
+    ports: !reset []
+    labels:
+    # Watchtower: recreate uhf-server whenever it recreates gluetun, otherwise
+    # uhf-server stays joined to a dead network namespace. Do NOT also set
+    # watchtower.monitor-only here; it neutralizes depends-on.
+    - com.centurylinklabs.watchtower.depends-on=uhf-gluetun

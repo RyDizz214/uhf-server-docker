@@ -1,0 +1,35 @@
+########################################
+# UHF Server — host FFmpeg overlay (x86-64 only)
+#
+# Uses the HOST's ffmpeg, ffprobe and comskip instead of the ones built into
+# the image:
+#   docker compose -f docker-compose.yml -f docker-compose.host-ffmpeg.yml up -d
+#
+# Useful when the host has a newer, GPU-accelerated or vendor-patched ffmpeg.
+# Most users don't need it: the image already ships FFmpeg 9.0.2 and Comskip.
+#
+# How it works: the host's libraries are mounted read-only and the wrapper
+# scripts run each host binary through the host's own dynamic loader, so host
+# and container glibc versions don't have to match.
+#
+# Requirements:
+#   - x86-64 host (the wrappers use ld-linux-x86-64.so.2)
+#   - /usr/bin/ffmpeg, /usr/bin/ffprobe and /usr/local/bin/comskip on the host
+#     (edit the paths below if yours differ)
+########################################
+
+services:
+  uhf-server:
+    volumes:
+    - /lib/x86_64-linux-gnu:/host-libs/lib:ro
+    - /usr/lib/x86_64-linux-gnu:/host-libs/usr-lib:ro
+    - /usr/lib/x86_64-linux-gnu/pulseaudio:/host-libs/pulseaudio:ro
+    - /usr/lib/x86_64-linux-gnu/blas:/host-libs/blas:ro
+    - /usr/lib/x86_64-linux-gnu/lapack:/host-libs/lapack:ro
+    - /etc/alternatives:/host-libs/alternatives:ro
+    - /usr/bin/ffmpeg:/host-bin/ffmpeg:ro
+    - /usr/bin/ffprobe:/host-bin/ffprobe:ro
+    - /usr/local/bin/comskip:/host-bin/comskip:ro
+    - ./ffmpeg-wrapper.sh:/usr/local/bin/ffmpeg:ro
+    - ./ffprobe-wrapper.sh:/usr/local/bin/ffprobe:ro
+    - ./comskip-wrapper.sh:/usr/local/bin/comskip:ro

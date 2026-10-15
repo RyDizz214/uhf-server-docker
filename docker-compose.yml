@@ -1,93 +1,40 @@
+########################################
+# UHF Server — base compose file
+#
+# Runs the pre-built image (UHF Server + FFmpeg + Comskip) from GitHub
+# Container Registry. Optional overlays:
+#
+#   VPN via gluetun (any provider):
+#     docker compose -f docker-compose.yml -f docker-compose.vpn.yml up -d
+#
+#   Host ffmpeg/Comskip instead of the built-in ones (x86-64 only):
+#     docker compose -f docker-compose.yml -f docker-compose.host-ffmpeg.yml up -d
+#
+# Or set COMPOSE_FILE in .env to combine overlays automatically.
+########################################
+
 services:
-  gluetun-uhf:
-    image: qmcgaw/gluetun:latest
-    container_name: uhf-gluetun
+  uhf-server:
+    image: ${IMAGE_REGISTRY:-ghcr.io/rydizz214/uhf-server-docker}:${IMAGE_TAG:-2.2.0}
+    pull_policy: ${PULL_POLICY:-missing}
+    container_name: uhf-server
     init: true
     restart: unless-stopped
-    cap_add:
-    - NET_ADMIN
-    devices:
-    - /dev/net/tun:/dev/net/tun
-    ports:
-    - 127.0.0.1:${HOST_PORT:-8002}:${UHF_PORT:-8000}
-    environment:
-    - VPN_SERVICE_PROVIDER=surfshark
-    - VPN_TYPE=wireguard
-    - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
-    - WIREGUARD_ADDRESSES=10.14.0.2/16
-    - SERVER_CITIES=${SERVER_CITIES:-Charlotte}
-    - TZ=${TZ:-America/New_York}
-    - HTTP_CONTROL_SERVER_ADDRESS=:8001
-    - FIREWALL_INPUT_PORTS=${UHF_PORT:-8000}
-    # 224.0.0.251/32 (mDNS) added so uhf-server's zeroconf/discovery service
-    # can send its multicast announce without the OUTPUT chain's default
-    # DROP turning into a logged "Operation not permitted" at startup.
-    - FIREWALL_OUTBOUND_SUBNETS=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,224.0.0.251/32
-    - WIREGUARD_PERSISTENT_KEEPALIVE_INTERVAL=25s
-    volumes:
-    - ./gluetun:/gluetun
-    healthcheck:
-      test:
-      - CMD-SHELL
-      - ping -c 1 1.1.1.1 || exit 1
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-  uhf-server:
-    image: swapplications/uhf-server:2.2.0
-    container_name: uhf-server
-    restart: unless-stopped
-    network_mode: service:gluetun-uhf
-    depends_on:
-      gluetun-uhf:
-        condition: service_healthy
     env_file:
     - .env
+    ports:
+    - ${HOST_PORT:-8000}:${UHF_PORT:-8000}
     volumes:
-    - ${HOST_RECORDINGS_DIR}:/recordings
-    - ${HOST_UHF_DATA_DIR}:/var/lib/uhf-server
-    - /lib/x86_64-linux-gnu:/host-libs/lib:ro
-    - /usr/lib/x86_64-linux-gnu:/host-libs/usr-lib:ro
-    - /usr/lib/x86_64-linux-gnu/pulseaudio:/host-libs/pulseaudio:ro
-    - /usr/lib/x86_64-linux-gnu/blas:/host-libs/blas:ro
-    - /usr/lib/x86_64-linux-gnu/lapack:/host-libs/lapack:ro
-    - /etc/alternatives:/host-libs/alternatives:ro
-    - /usr/bin/ffmpeg:/host-bin/ffmpeg:ro
-    - /usr/bin/ffprobe:/host-bin/ffprobe:ro
-    - /usr/local/bin/comskip:/host-bin/comskip:ro
-    - ./ffmpeg-wrapper.sh:/usr/local/bin/ffmpeg:ro
-    - ./ffprobe-wrapper.sh:/usr/local/bin/ffprobe:ro
-    - ./comskip-wrapper.sh:/usr/local/bin/comskip:ro
-    - ./systemd-inhibit-dummy.sh:/usr/bin/systemd-inhibit:ro
-    - ./entrypoint.sh:/usr/local/bin/entrypoint.sh:ro
-    entrypoint:
-    - /usr/local/bin/entrypoint.sh
+    - ${HOST_RECORDINGS_DIR:-./uhf-recordings}:/recordings
+    - ${HOST_UHF_DATA_DIR:-./uhf-data}:/var/lib/uhf-server
+    # Optional: let systemd-inhibit keep the host awake during recordings.
+    # - /run/dbus/system_bus_socket:/run/dbus/system_bus_socket:ro
     environment:
       TZ: ${TZ:-America/New_York}
       UHF_PORT: ${UHF_PORT:-8000}
       UHF_RECORDINGS_DIR: ${UHF_RECORDINGS_DIR:-/recordings}
       UHF_DATA_DIR: ${UHF_DATA_DIR:-/var/lib/uhf-server}
       UHF_ENABLE_COMMERCIAL_DETECTION: ${UHF_ENABLE_COMMERCIAL_DETECTION:-true}
+      UHF_SINGLE_FILE_RECORDINGS: ${UHF_SINGLE_FILE_RECORDINGS:-}
       COMSKIP_ARGS: ${COMSKIP_ARGS:---ini}
       LOG_LEVEL: ${LOG_LEVEL:-info}
-      UHF_SINGLE_FILE_RECORDINGS: ${UHF_SINGLE_FILE_RECORDINGS:-}
-    labels:
-    # NOTE: do NOT set watchtower.monitor-only here. It neutralizes depends-on,
-    # so watchtower recreates uhf-gluetun without recreating this container,
-    # leaving it joined to a dead network namespace (exit 128 on next restart).
-    - com.centurylinklabs.watchtower.depends-on=uhf-gluetun
-    healthcheck:
-      test:
-      - CMD-SHELL
-      - kill -0 1
-      interval: 60s
-      timeout: 5s
-      start_period: 10s
-      retries: 3
-networks:
-  default:
-    enable_ipv6: true
-    ipam:
-      config:
-      - subnet: fd00:dc:8::/64

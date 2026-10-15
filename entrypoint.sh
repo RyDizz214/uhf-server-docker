@@ -93,14 +93,15 @@ echo "=========================================="
 echo ""
 
 # Start UHF Server with systemd-inhibit to prevent idle sleep
-# systemd-inhibit prevents the system from going idle while recording
-# If systemd-inhibit is unavailable, run UHF Server directly
+# systemd-inhibit prevents the system from going idle while recording.
+# It needs the host's D-Bus socket mounted (see README); without it,
+# systemd-inhibit exits immediately, so run UHF Server directly instead.
 echo "Starting UHF Server..."
-if command -v systemd-inhibit &> /dev/null; then
+if command -v systemd-inhibit &> /dev/null && [ -S /run/dbus/system_bus_socket ]; then
     echo "Using systemd-inhibit to prevent idle sleep..."
     exec systemd-inhibit --what=idle --why="uhf-server recording" \
         "${UHF_CMD}" "${UHF_ARGS[@]}"
 else
-    echo "Warning: systemd-inhibit not available, starting without sleep prevention"
+    echo "systemd-inhibit or host D-Bus not available, starting without sleep prevention"
     exec "${UHF_CMD}" "${UHF_ARGS[@]}"
 fi

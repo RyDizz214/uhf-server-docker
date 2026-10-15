@@ -1,464 +1,204 @@
-# UHF Server Docker
+# UHF Server — Docker
 
-A fully containerized UHF Server environment with FFmpeg 8.0, Comskip commercial detection, and systemd-inhibit for preventing idle sleep during recordings.
+A ready-to-run Docker setup for [UHF Server](https://github.com/swapplications/uhf-server-dist),
+the DVR server for the UHF app. It records live streams on schedule, detects commercials with
+Comskip, and serves recordings to the UHF apps and to its own web app.
 
-This project uses a **two-phase deployment model**: images are built once and pushed to a registry, then deployed via docker-compose with personal configuration. Similar to snappier-server.
+The pre-built image is published to GitHub Container Registry for Intel/AMD (`amd64`) and ships:
 
-## Features
+* **UHF Server 2.2.0**
+* **FFmpeg 9.0.2**, built from source with x264, x265, fdk-aac, libvpx and opus
+* **Comskip 0.83**, built from source for commercial detection
+* **Ubuntu 26.04 LTS** base
 
-* **UHF Server v1.5.1** - Latest version with HLS compatibility improvements
-* **FFmpeg 8.0** - Compiled from source with full codec support (x264, x265, VP9, libopus, etc.)
-* **Comskip integration** - Automatic commercial detection on recorded `.ts` files
-* **systemd-inhibit** - Prevents system from entering idle/sleep mode during recordings
-* **Environment-driven configuration** - Easy version updates and settings via `.env` file
-* **Multi-stage Docker build** - Optimized for image size and fast builds
-* **Healthcheck** - Built-in Docker Healthcheck monitoring
-* **Persistent storage** - Recordings and UHF data persist via Docker volumes
-* **Registry-based deployment** - Pre-built images for consistency across deployments
+See [CHANGELOG.md](CHANGELOG.md) for what's new in UHF Server.
 
-## Table of Contents
-
-1. [Overview](#overview)
-2. [Quick Start](#quick-start)
-3. [Two-Phase Workflow](#two-phase-workflow)
-4. [Prerequisites](#prerequisites)
-5. [Environment Variables](#environment-variables)
-6. [Running with Docker Compose](#running-with-docker-compose)
-7. [Building & Pushing Images](#building--pushing-images)
-8. [Architecture](#architecture)
-9. [Troubleshooting](#troubleshooting)
-10. [Full Documentation](#full-documentation)
+Compared with the official `swapplications/uhf-server` image, this one adds a newer FFmpeg,
+configuration through `.env`, an optional VPN overlay that works with any provider, and an
+optional overlay that uses the host's ffmpeg instead of the bundled one.
 
 ---
 
-## Overview
+## Install
 
-This project provides a fully containerized UHF Server environment based on Ubuntu 25.04. It includes:
+### 1. Install Docker on your Linux host
 
-* **UHF Server v1.5.1** - Downloaded from official GitHub releases
-* **FFmpeg 8.0** - Built from source with comprehensive codec support
-* **Comskip** - Compiled from source for commercial detection
-* **systemd-inhibit** - Integrated to prevent idle sleep during recording
+If you don't already have it: <https://docs.docker.com/engine/install/>.
+Docker Compose v2 is included with modern Docker installs.
 
-The Docker setup uses a **multi-stage build** approach:
-1. **Stage 1** - Builds FFmpeg 8.0 from source with codec libraries
-2. **Stage 2** - Builds Comskip from source
-3. **Stage 3** - Creates the runtime container with compiled tools and UHF Server binary
-
----
-
-## Two-Phase Workflow
-
-This project uses a separation of concerns model:
-
-**Phase 1: Build (One-time, per version)**
-- Happens in the build environment
-- Creates a Docker image with all dependencies baked in
-- Image is pushed to a registry (ghcr.io)
-- Uses: `./build.sh --push`
-
-**Phase 2: Deploy (Per instance)**
-- Happens on any machine with Docker
-- Pulls the pre-built image from registry
-- Applies personal configuration via `.env`
-- Uses: `docker-compose up`
-
-This approach allows:
-- Consistent images across all deployments
-- No need to compile anything on deployment machines
-- Easy rollback by changing `IMAGE_TAG` in `.env`
-- Multiple instances with different configurations from the same image
-
----
-
-## Prerequisites
-
-### For Building
-
-* **Docker Engine** (≥ 24.x) installed
-* **6-7 GB disk space** for building and staging
-* **GitHub Container Registry (GHCR) credentials** (optional, only if pushing)
-
-### For Deployment
-
-* **Docker Engine** (≥ 24.x) installed
-* **Docker Compose** (≥ v2.0) installed
-* **2-3 GB disk space** for the image
-* **Network access** to ghcr.io (if using public registry)
-
----
-
-## Quick Start - Deployment
-
-To deploy using a pre-built image:
-
-1. **Clone or navigate to the repository:**
-   ```bash
-   git clone https://github.com/rydizz214/uhf-server-docker.git
-   cd uhf-server-docker
-   ```
-
-2. **Create your configuration:**
-   ```bash
-   cp example.env .env
-   # Edit .env to set your paths, ports, etc.
-   nano .env
-   ```
-
-3. **Start the service:**
-   ```bash
-   docker-compose up -d
-   ```
-
-4. **Verify it's running:**
-   ```bash
-   docker-compose ps
-   docker-compose logs -f
-   ```
-
-5. **Access UHF Server:**
-   Open `http://localhost:8000` in your browser (or your configured `HOST_PORT`)
-
----
-
-## Building & Pushing Images
-
-> **Note:** This section is for maintainers building new versions. Most users will use the deployment instructions above.
-
-To build and push a new version:
+### 2. Get the files
 
 ```bash
-# Build locally
-./build.sh
-
-# Build without cache (forces fresh compile)
-./build.sh --no-cache
-
-# Build and push to GitHub Container Registry
-./build.sh --push
-
-# Build fresh and push (recommended for releases)
-./build.sh --no-cache --push
+git clone https://github.com/rydizz214/uhf-server-docker.git
+cd uhf-server-docker
+cp example.env .env
 ```
 
-The image will be tagged as `ghcr.io/rydizz214/uhf-server-docker:1.5.1`.
+### 3. Set a password and start it
 
-For detailed build instructions and authentication, see [DEPLOYMENT.md - Phase 1](./DEPLOYMENT.md#phase-1-build-and-push-one-time-setup).
+Edit `.env` and set `UHF_PASSWORD`. Without one, anyone who can reach the server can use it
+and open the web app without signing in. Then:
+
+```bash
+docker compose up -d
+```
+
+### 4. Connect
+
+* **UHF apps:** Settings → DVR server, then enter the address of the machine running Docker and
+  the port (`HOST_PORT`, default 8000).
+* **Web app:** open `http://<address>:<port>/` in a browser to manage scheduled recordings,
+  browse and download the library, watch recordings (including ones still in progress), and
+  follow the server log live.
 
 ---
 
-## Environment Variables
+## Common settings
 
-Edit `.env` to customize your deployment.
+All settings live in `.env`. See [example.env](example.env) for the full list.
 
-### Image Configuration
+| Variable | Default | What it does |
+|----------|---------|--------------|
+| `UHF_PASSWORD` | none | Password the apps and the web app must present. Changing it ends existing web sessions. |
+| `HOST_PORT` | `8000` | Port on the host. |
+| `HOST_RECORDINGS_DIR` | `./uhf-recordings` | Where recordings are stored on the host. |
+| `HOST_UHF_DATA_DIR` | `./uhf-data` | Where the server database is stored on the host. Keep it, or schedules are lost. |
+| `UHF_ENABLE_COMMERCIAL_DETECTION` | `true` | Run Comskip on each finished recording so the apps can skip ad breaks. |
+| `UHF_SINGLE_FILE_RECORDINGS` | `false` | Merge each finished recording into one `index.ts`. Playback and downloads are unchanged. The merge briefly needs twice the recording's size in free disk space. |
+| `TZ` | `America/New_York` | Time zone, used for recurring recordings. |
+| `LOG_LEVEL` | `info` | `debug`, `info`, `warning`, `error` or `critical`. |
+| `IMAGE_TAG` | `2.2.0` | Image version to run. |
 
-```ini
-# Container registry (where image is stored)
-IMAGE_REGISTRY=ghcr.io/rydizz214/uhf-server-docker
-
-# Image version/tag
-IMAGE_TAG=1.5.1
-
-# When to pull from registry: missing (default), always, or never
-PULL_POLICY=missing
-```
-
-### Container Configuration
-
-```ini
-# Port inside container (usually 8000)
-UHF_PORT=8000
-
-# Port on your host machine
-HOST_PORT=8000
-
-# Where to store recordings
-HOST_RECORDINGS_DIR=/data/recordings/uhf-server
-
-# Where to store UHF database and data
-HOST_UHF_DATA_DIR=/data/recordings/uhf-server
-
-# Container timezone
-TZ=America/New_York
-```
-
-### UHF Server Options
-
-```ini
-# Enable commercial detection (true/false)
-UHF_ENABLE_COMMERCIAL_DETECTION=true
-
-# Comskip arguments (--ini, --detectfiller, etc.)
-COMSKIP_ARGS=--ini
-
-# Merge each finished recording into a single index.ts (uhf-server 2.2.0+).
-# Needs twice the recording's size in free disk space while merging.
-UHF_SINGLE_FILE_RECORDINGS=false
-```
+Recordings are stored as HLS, one folder per recording. Each folder holds an `index.m3u8`
+playlist, its segments (or a single `index.ts`), the Comskip cut list, a thumbnail and an
+`ffmpeg.log`. If a recording fails, attach its `ffmpeg.log` to your bug report.
 
 ---
 
-## Running with Docker Compose
+## Add a VPN (optional)
 
-### Start the Service
+To route all of UHF Server's traffic through a VPN, use the gluetun overlay.
+[gluetun](https://github.com/qdm12/gluetun) supports 40+ providers, including NordVPN, Mullvad,
+ProtonVPN, PIA, Surfshark, AirVPN and Windscribe.
 
-```bash
-docker-compose up -d
-```
+1. Add your VPN settings to `.env`. Example for Mullvad over WireGuard:
 
-This will:
-* Build the image if it doesn't exist
-* Create a container named `uhf-server`
-* Mount your recording and data directories
-* Start UHF Server with commercial detection enabled
-* Prevent system idle/sleep with systemd-inhibit
+   ```env
+   VPN_SERVICE_PROVIDER=mullvad
+   VPN_TYPE=wireguard
+   WIREGUARD_PRIVATE_KEY=<paste-your-key>
+   WIREGUARD_ADDRESSES=<address-from-your-provider>
+   SERVER_COUNTRIES=Sweden
+   ```
 
-### Check Status
+   The exact variables for your provider are in the
+   [gluetun wiki](https://github.com/qdm12/gluetun-wiki/tree/main/setup/providers). Every
+   variable in `.env` is passed to gluetun, so any gluetun setting works without editing the
+   compose files.
 
-```bash
-# View container status
-docker-compose ps
+2. Start with the overlay:
 
-# View logs in real-time
-docker-compose logs -f
-
-# View logs for specific lines
-docker-compose logs --tail=50
-```
-
-### Stop the Service
-
-```bash
-docker-compose down
-```
-
-### Restart the Service
-
-```bash
-docker-compose restart
-```
-
----
-
-## Upgrading to a New Version
-
-To use a new version of UHF Server or FFmpeg:
-
-1. **A new image must be built and pushed** (by a maintainer):
    ```bash
-   # Update Dockerfile with new versions
-   # Then build and push
-   ./build.sh --no-cache --push
+   docker compose -f docker-compose.yml -f docker-compose.vpn.yml up -d
    ```
 
-2. **Update IMAGE_TAG in your .env** (on deployment machines):
-   ```ini
-   IMAGE_TAG=1.6.0  # New version
-   ```
+   Or set `COMPOSE_FILE=docker-compose.yml:docker-compose.vpn.yml` in `.env` so a plain
+   `docker compose up -d` includes it.
 
-3. **Pull and restart**:
-   ```bash
-   docker-compose pull
-   docker-compose down
-   docker-compose up -d
-   ```
-
-### Check Installed Versions
-
-```bash
-# Check FFmpeg version
-docker-compose exec uhf-server ffmpeg -version
-
-# Check Comskip version
-docker-compose exec uhf-server comskip --version
-
-# Check which image is running
-docker-compose ps
-docker inspect uhf-server | grep Image
-```
+With the VPN overlay the port is bound to `127.0.0.1` only. Put a reverse proxy in front of it
+for access from other devices.
 
 ---
 
-## Architecture
+## Use the host's ffmpeg (optional, x86-64 only)
 
-### Multi-Stage Build Process
+If your host has its own ffmpeg (for example a GPU-accelerated or newer build), the
+`docker-compose.host-ffmpeg.yml` overlay uses the host's `ffmpeg`, `ffprobe` and `comskip`
+instead of the bundled ones:
 
-```
-┌─────────────────────┐
-│  Stage 1: FFmpeg    │
-│  - Build x264       │
-│  - Build x265       │
-│  - Build fdk-aac    │
-│  - Build libvpx     │
-│  - Build opus       │
-│  - Build FFmpeg 8.0 │
-└──────────┬──────────┘
-           │
-           ├─────────────────────────┐
-           ↓                         ↓
-   ┌───────────────┐      ┌──────────────────┐
-   │ Stage 2: Comsk│      │ Stage 3: Runtime │
-   │ - Build       │      │ - Add symlinks   │
-   │   Comskip     │      │ - Download UHF   │
-   └───────┬───────┘      │ - Copy FFmpeg    │
-           │              │ - Copy Comskip   │
-           │              │ - Add entrypoint │
-           └──────────┬───┘
-                      │
-                      ↓
-            ┌──────────────────┐
-            │ Final Container  │
-            │ - Ubuntu 25.04   │
-            │ - FFmpeg 8.0     │
-            │ - Comskip        │
-            │ - UHF Server     │
-            │ - systemd-inhibit│
-            └──────────────────┘
+```bash
+docker compose -f docker-compose.yml -f docker-compose.host-ffmpeg.yml up -d
 ```
 
-### Dockerfile Organization
+It mounts the host's libraries read-only and runs each binary through the host's own dynamic
+loader, so the host's and container's glibc versions don't need to match. It expects
+`/usr/bin/ffmpeg`, `/usr/bin/ffprobe` and `/usr/local/bin/comskip` on the host; edit the
+overlay if yours are elsewhere. Overlays combine, for example
+`COMPOSE_FILE=docker-compose.yml:docker-compose.vpn.yml:docker-compose.host-ffmpeg.yml`.
 
-* **Dockerfile** - Multi-stage build (consolidated, replaces old Dockerfile and Dockerfile.inhibit)
-* **entrypoint.sh** - Startup script that handles environment configuration
-* **docker-compose.yml** - Container orchestration (single, consolidated file)
-* **.env** - Version and configuration variables
-* **example.env** - Template for environment variables
+---
 
-### entrypoint.sh Script
+## Commands
 
-The `entrypoint.sh` script handles:
-* Parsing environment variables
-* Creating required directories
-* Building UHF Server command with proper arguments
-* Starting UHF with systemd-inhibit to prevent idle sleep
-* Proper signal handling for graceful shutdown
+```bash
+docker compose ps                  # status
+docker compose logs -f uhf-server  # follow the log
+docker compose pull && docker compose up -d   # update to the IMAGE_TAG in .env
+docker compose down                # stop
+```
+
+Check versions inside the container:
+
+```bash
+docker compose exec uhf-server ffmpeg -version
+docker compose exec uhf-server sh -c 'comskip 2>&1 | head -1'
+curl -s http://localhost:8000/server/stats   # includes the UHF Server version
+```
 
 ---
 
 ## Troubleshooting
 
-### Container fails to start
+**The container exits right away.** Run `docker compose logs uhf-server`. The startup banner
+shows the settings it was started with.
 
-```bash
-# Check logs for errors
-docker-compose logs uhf-server
+**The apps can't find the server.** Check that `HOST_PORT` is reachable from the device and
+not blocked by a firewall. With the VPN overlay the port is bound to `127.0.0.1` only.
 
-# Verify build completed successfully
-docker-compose build --no-cache
+**Recurring recordings land on the wrong day.** Set `TZ` to your local time zone. Series
+scheduled from older UHF app versions keep using UTC; re-create them from an up-to-date app.
 
-# Check if directories exist and have correct permissions
-ls -la /data/recordings/uhf-server
-ls -la /var/lib/uhf-server
-```
+**A recording fails with "connections in use".** Your playlist's simultaneous-connection
+limit is reached, usually because another device is still playing a channel from it.
 
-### Port already in use
+**Commercial detection doesn't run.** Make sure `UHF_ENABLE_COMMERCIAL_DETECTION=true`.
+Detection starts when a recording finishes and takes a few minutes.
 
-Change `HOST_PORT` in `.env`:
-```ini
-HOST_PORT=8001  # Use different port
-```
-
-Then restart:
-```bash
-docker-compose down
-docker-compose up -d
-```
-
-### Commercial detection not working
-
-Verify Comskip is installed:
-```bash
-docker-compose exec uhf-server comskip --version
-```
-
-Check environment variable:
-```bash
-# Should be "true" or "1" in .env
-UHF_ENABLE_COMMERCIAL_DETECTION=true
-```
-
-### Container is unhealthy
-
-Wait a moment (healthcheck takes 10+ seconds on first start):
-```bash
-# Check health status
-docker-compose ps
-
-# Wait and check again
-sleep 20
-docker-compose ps
-
-# View full logs
-docker-compose logs --tail=100
-```
-
-### Out of disk space during build
-
-FFmpeg source build is large. Ensure you have:
-* **4GB+** available during build
-* After build succeeds, space is cleaned up
-
-### Permission denied errors
-
-Ensure host directories are readable/writable:
-```bash
-sudo chown -R $(whoami):$(whoami) /data/recordings/uhf-server
-sudo chown -R $(whoami):$(whoami) /var/lib/uhf-server
-chmod -R 755 /data/recordings/uhf-server
-chmod -R 755 /var/lib/uhf-server
-```
+**Keep the host awake during recordings.** Uncomment the D-Bus socket mount in
+`docker-compose.yml`. The container then wraps the server in `systemd-inhibit`. Without that
+mount it starts normally, without sleep prevention.
 
 ---
 
-## Advanced Usage
+## Building the image
 
-### Custom Comskip Configuration
-
-Comskip config can be modified inside the container:
-```bash
-# Edit Comskip config
-docker-compose exec uhf-server vi /usr/local/etc/comskip.ini
-
-# Or copy your own config
-docker cp ./my-comskip.ini uhf-server:/usr/local/etc/comskip.ini
-```
-
-### Manual FFmpeg Testing
+Maintainers only; everyone else uses the published image.
 
 ```bash
-# Test FFmpeg installation
-docker-compose exec uhf-server ffmpeg -codecs | grep hevc
-
-# Check FFmpeg build info
-docker-compose exec uhf-server ffmpeg -version
+./build.sh               # build locally
+./build.sh --no-cache    # fresh build
+./build.sh --push        # build and push to ghcr.io (needs `docker login ghcr.io`)
 ```
 
-### Accessing Container Shell
+Versions are set by build arguments in the [Dockerfile](Dockerfile): `UHF_SERVER_VERSION`,
+`FFMPEG_VERSION`, `X265_VERSION`, `COMSKIP_VERSION` and `COMSKIP_FFMPEG_VERSION`. The image
+tag is set in [build.sh](build.sh).
 
-```bash
-docker-compose exec uhf-server /bin/bash
-```
+The build has three stages:
 
----
-
-## Full Documentation
-
-For comprehensive information about this project:
-
-- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Complete two-phase workflow guide
-  - Phase 1: Building and pushing images
-  - Phase 2: Deployment and configuration
-  - Detailed build instructions
-  - Registry authentication
-  - Version management
+1. **FFmpeg:** x264, x265, fdk-aac, libvpx and opus, then FFmpeg itself.
+2. **Comskip:** Comskip 0.83 uses an API that FFmpeg 8 removed, so it is linked statically
+   against a small, decode-only FFmpeg 7.1. It doesn't need Ubuntu's FFmpeg at runtime.
+3. **Runtime:** Ubuntu 26.04 with the compiled tools, the UHF Server release zip and
+   `entrypoint.sh`, which turns the `.env` settings into server arguments.
 
 ---
 
 ## Support
 
-For issues with UHF Server itself, visit: https://github.com/swapplications/uhf-server-dist
+* UHF Server itself: <https://github.com/swapplications/uhf-server-dist>
+* This Docker setup: <https://github.com/rydizz214/uhf-server-docker>
 
-For Docker setup issues, check the logs and troubleshooting section above.
+## License
 
-For deployment and configuration issues, see [DEPLOYMENT.md](./DEPLOYMENT.md).
+See [LICENSE](LICENSE).
