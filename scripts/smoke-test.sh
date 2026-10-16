@@ -49,7 +49,10 @@ CODE="$(curl -s -m 5 -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: ap
 [ "${CODE}" = "401" ] || fail "wrong password returned HTTP ${CODE}, expected 401"
 echo "== Password enforced (wrong password -> 401)"
 
-docker logs "${NAME}" 2>&1 | grep -q -- 'Single-File Recordings: true' || fail "single-file option not applied"
+# Capture the log first: with pipefail, `docker logs | grep -q` fails when grep
+# exits early and docker logs gets SIGPIPE.
+docker logs "${NAME}" >"${TMP}/startup.log" 2>&1
+grep -q -- 'Single-File Recordings: true' "${TMP}/startup.log" || fail "single-file option not applied"
 
 echo "== ffmpeg: $(docker exec "${NAME}" ffmpeg -version | head -1)"
 docker exec "${NAME}" ffmpeg -v error -f lavfi -i testsrc2=size=1280x720:rate=30 -f lavfi -i sine=frequency=440 \
