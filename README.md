@@ -7,7 +7,7 @@ Comskip, and serves recordings to the UHF apps and to its own web app.
 The pre-built image is published to GitHub Container Registry for Intel/AMD (`amd64`) and ARM
 (`arm64`) and ships:
 
-* **UHF Server 2.2.0**
+* **UHF Server 2.2.1**
 * **FFmpeg 9.0.2**, built from source with x264, x265, fdk-aac, libvpx and opus
 * **Comskip 0.83**, built from source for commercial detection
 * **Ubuntu 26.04 LTS** base
@@ -25,14 +25,14 @@ optional overlay that uses the host's ffmpeg instead of the bundled one.
 Pull the image and run it. No clone needed:
 
 ```bash
-docker pull ghcr.io/rydizz214/uhf-server-docker:2.2.0
+docker pull ghcr.io/rydizz214/uhf-server-docker:2.2.1
 
 docker run -d --init --name uhf-server --restart unless-stopped \
   -p 8000:8000 \
   -e UHF_PASSWORD=change-me \
   -v /path/to/recordings:/recordings \
   -v /path/to/uhf-data:/var/lib/uhf-server \
-  ghcr.io/rydizz214/uhf-server-docker:2.2.0
+  ghcr.io/rydizz214/uhf-server-docker:2.2.1
 ```
 
 Replace the two `/path/to/...` folders with real ones on your host and pick your own password.
@@ -90,7 +90,7 @@ All settings live in `.env`. See [example.env](example.env) for the full list.
 | `UHF_SINGLE_FILE_RECORDINGS` | `false` | Merge each finished recording into one `index.ts`. Playback and downloads are unchanged. The merge briefly needs twice the recording's size in free disk space. |
 | `TZ` | `America/New_York` | Time zone, used for recurring recordings. |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warning`, `error` or `critical`. |
-| `IMAGE_TAG` | `2.2.0` | Image version to run. |
+| `IMAGE_TAG` | `2.2.1` | Image version to run. |
 
 Recordings are stored as HLS, one folder per recording. Each folder holds an `index.m3u8`
 playlist, its segments (or a single `index.ts`), the Comskip cut list, a thumbnail and an

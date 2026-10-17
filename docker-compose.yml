@@ -15,7 +15,7 @@
 
 services:
   uhf-server:
-    image: ${IMAGE_REGISTRY:-ghcr.io/rydizz214/uhf-server-docker}:${IMAGE_TAG:-2.2.0}
+    image: ${IMAGE_REGISTRY:-ghcr.io/rydizz214/uhf-server-docker}:${IMAGE_TAG:-2.2.1}
     container_name: uhf-server
     init: true
     restart: unless-stopped

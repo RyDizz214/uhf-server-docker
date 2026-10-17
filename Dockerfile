@@ -154,7 +154,7 @@ RUN set -eux; \
 FROM ubuntu:26.04
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG UHF_SERVER_VERSION=2.2.0
+ARG UHF_SERVER_VERSION=2.2.1
 # Set by buildx for each platform (amd64, arm64). UHF_SERVER_ARCH overrides it.
 ARG TARGETARCH
 ARG UHF_SERVER_ARCH=
@@ -218,7 +218,7 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 # Image metadata
 LABEL org.opencontainers.image.title="UHF Server" \
       org.opencontainers.image.description="UHF Server with FFmpeg and Comskip in Docker" \
-      org.opencontainers.image.version="2.2.0" \
+      org.opencontainers.image.version="2.2.1" \
       org.opencontainers.image.source="https://github.com/rydizz214/uhf-server-docker" \
       org.opencontainers.image.url="https://github.com/rydizz214/uhf-server-docker"
 
