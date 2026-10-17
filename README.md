@@ -101,7 +101,7 @@ uhf-server --port 8000 --recordings-dir /recordings --enable-commercial-detectio
 
 Replace `/mnt/mydisk/recordings` and `/mnt/mydisk/uhf-db` with valid paths on your system, and
 append any of the [server arguments](#server-arguments), for example `--password mysecretpassword`
-or `--single-file-recordings`. Only version tags are published, there is no `latest` tag.
+or `--single-file-recordings`. Version tags are published for every release, and `latest` points at the newest one (2.2.1 onwards).
 
 ## Running without Docker
 
