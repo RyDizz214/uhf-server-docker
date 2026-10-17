@@ -73,8 +73,10 @@ fi
 
 # Add server password if specified. Without one, 2.1.0+ hands a session
 # token to anyone who calls /auth/password-login.
+# Passed via the environment (uhf-server reads SERVER_PASSWORD), not --password:
+# command lines are world-readable in ps / /proc/<pid>/cmdline, even on the host.
 if [ -n "${UHF_PASSWORD}" ]; then
-    UHF_ARGS+=("--password" "${UHF_PASSWORD}")
+    export SERVER_PASSWORD="${UHF_PASSWORD}"
 fi
 
 # Log configuration
