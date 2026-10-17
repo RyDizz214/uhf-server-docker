@@ -1,5 +1,12 @@
 # UHF Server - Changelog
 
+## 2.2.1
+
+### Fixes
+
+- More recovery improvements when the server unexpectedly finishes a stream.
+- Deleting a recording while its commercial detection was still running left an orphan folder behind (the server logged "Directory not empty") and, a little later, a notification about a recording that no longer existed. The analysis is now stopped before the files are removed, and the folder is deleted completely.
+
 ## 2.2.0
 
 ### New: recordings that survive bad streams
