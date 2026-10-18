@@ -95,7 +95,7 @@ docker run -d --init --name=uhf --restart unless-stopped \
 -v /mnt/mydisk/recordings:/recordings \
 -v /mnt/mydisk/uhf-db:/var/lib/uhf-server \
 -p 8000:8000 \
-swapplications/uhf-server:2.2.0 \
+swapplications/uhf-server:2.2.1 \
 uhf-server --port 8000 --recordings-dir /recordings --enable-commercial-detection
 ```
 
