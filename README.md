@@ -202,7 +202,7 @@ for `linux/amd64` and `linux/arm64`:
 
 * Pushing a tag `vX.Y.Z` publishes `:X.Y.Z`, `:X.Y` and `:latest`.
 * Pushing an image-only rebuild tag `vX.Y.Z-N` publishes `:X.Y.Z-N`, `:X.Y.Z`, `:X.Y` and `:latest`.
-* Pushing to `main` publishes `:main` only.
+* Pushing to `main` builds nothing. Run the workflow manually from the Actions tab to build a branch (publishes `:<branch>`).
 
 For a local, single-architecture build:
 
